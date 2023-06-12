@@ -1,0 +1,60 @@
+-------------------------------------------------------------------
+
+PROGRAM:        Archive Manager
+PROGAMMER:      Jake Springer
+DATE:           6/11/23
+PYTHON VERS:    3.10.6
+
+-------------------------------------------------------------------
+
+						///  Overview  ///
+
+I am so goddamn sick of not having a basic tar archive program that
+lets me point it at a directory and it archives it. Is that really so 
+much to ask for? 
+
+-------------------------------------------------------------------
+		
+						///  Ideas  ///
+
+- Could potentially get deadbolt into the mix 0.o but want to get 
+  this working steadily first.
+- Save/load path lists 
+
+-------------------------------------------------------------------
+
+						///  To-Do  ///
+
+[0] Double check that paths are not within an already added path,
+    for example /home/jakers/ and /home/jakers/Desktop 
+[0] Clean up archive names
+[0] Figure out a way to cancel mid-archive
+[0] "Done" message on archive completion
+[0] Settings window
+
+[X] Update name function 
+[X] Toggle adding date/time to archive name
+[X] Date/time for archive names 
+[X] Import config file
+[X] Display stats pane (probably another frame)
+	- Added paths
+	- Estimated size 
+	- Archive name 
+[X] Display added paths 
+
+
+-------------------------------------------------------------------
+
+						///  Notes  ///
+
+
+-------------------------------------------------------------------
+
+						///  Bugs  ////
+
+- Broken stuff that I've noticed or has been relayed to me.
+
+[0] OUTSTANDING
+[X] FIXED / DATE / VERSION
+
+-------------------------------------------------------------------

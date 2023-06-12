@@ -1,0 +1,7 @@
+{
+    "start_dir":"/",
+    "save_dir":"/home/jakers/Desktop/dump",
+    "verbose":true,
+    "show_full_paths":true,
+    "date_fmt":"%m-%d-%Y"
+}
