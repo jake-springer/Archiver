@@ -257,7 +257,9 @@ def add_dir(): # For adding directories to archive.target_paths
     archive.target_paths.append(path)
     paths_added_lbl["text"] = str(len(archive.target_paths))
     #update_path_box()
+    paths_box.config(state="normal")
     paths_box.insert(tk.END, path + '\n')
+    paths_box.config(state="disabled")
     # Get the estimated size of paths added to the target paths list
     calc_size()
     # Total files to be archived
@@ -448,6 +450,21 @@ arch_name_lbl = tk.Label( #?
 arch_name_lbl.place(x=x_next, y=y_start)
 
 # -------------------------------------------
+# Display save directory path
+
+save_dir_label = tk.Label(
+    stats, 
+    text=save_dir,
+    font=body_font,
+    bg = stats_bg
+)
+
+save_dir_label.place(x=x_start, y=y_next)
+
+
+
+
+# -------------------------------------------
 # Paths added
 
 label = tk.Label(
@@ -457,7 +474,7 @@ label = tk.Label(
     bg=stats_bg
 )
 
-label.place(x=x_start, y=y_next)
+label.place(x=x_start, y=y_next * 2)
 
 paths_added_lbl = tk.Label(
     stats,
@@ -466,7 +483,7 @@ paths_added_lbl = tk.Label(
     bg=stats_bg
 )
 
-paths_added_lbl.place(x=x_next, y=y_next)
+paths_added_lbl.place(x=x_next, y=y_next * 2)
 
 # -------------------------------------------
 # Exclude file
@@ -478,7 +495,7 @@ label = tk.Label(
     bg=stats_bg
 )
 
-label.place(x=x_start, y=y_next * 2)
+#label.place(x=x_start, y=y_next * 3)
 
 
 exclude_file_lbl = tk.Label(
@@ -488,7 +505,7 @@ exclude_file_lbl = tk.Label(
     bg=stats_bg
 )
 
-exclude_file_lbl.place(x=x_next, y=y_next * 2)
+#exclude_file_lbl.place(x=x_next, y=y_next * 3)
 
 
 # -------------------------------------------
@@ -501,7 +518,7 @@ label = tk.Label(
     bg=stats_bg
 )
 
-label.place(x=x_start, y=y_next * 3)
+label.place(x=x_start, y=y_next * 4)
 
 size_before_lbl = tk.Label(
     master=stats,
@@ -510,7 +527,7 @@ size_before_lbl = tk.Label(
     bg=stats_bg
 )
 
-size_before_lbl.place(x=x_next, y=y_next * 3)
+size_before_lbl.place(x=x_next, y=y_next * 4)
 
 # -------------------------------------------
 # File count
@@ -522,7 +539,7 @@ label = tk.Label(
     bg=stats_bg
 )
 
-label.place(x=x_start, y=y_next * 4)
+label.place(x=x_start, y=y_next * 5)
 
 file_count_lbl = tk.Label(
     master=stats,
@@ -531,7 +548,7 @@ file_count_lbl = tk.Label(
     bg=stats_bg
 )
 
-file_count_lbl.place(x=x_next, y=y_next*4)
+file_count_lbl.place(x=x_next, y=y_next*5)
 
 # -------------------------------------------
 # Path list
@@ -547,6 +564,7 @@ label.place(x=175, y=375)
 
 paths_box = tk.Text(
     stats,
+    state="disabled",
     width = 55,
     height = 15
 )
