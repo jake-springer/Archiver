@@ -5,15 +5,17 @@
 #===================================================================================================================
 
 
-# PROGRAM:        Archive Manager
+# PROGRAM:        Archiver
+app_vers = "0.1.5"
 # PROGAMMER:      Jake Springer
 # DATE:           6/11/23
 # PYTHON VERS:    3.10.6
 
 #-----------------------------------------------------------------------------------
 
+
 import json
-from archive import Archive
+# from archive import Archive
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
@@ -39,33 +41,39 @@ class Archive:
 root = tk.Tk()
 config_file = "config.json"
 archive = Archive()
-
+app_name = "Archiver"
+app_title = app_name, app_vers
 
 # Fonts/Window stuff
-font_family = "Ubuntu"
+font_family = "Hack"
 header_font = (font_family, "18","bold","underline")
-body_font = (font_family, "14")
+body_font = (font_family, "12")
 small_font = (font_family, "10")
 main_bg = "grey90"
 stats_bg = "grey80"
 
 add_dt = tk.IntVar()
 
-#-----------------------------------------------------------------------------------
-#       Load JSON config file
 
+#       Load JSON config file
 with open(config_file, 'r') as file:
     config = json.load(file)
     start_dir = config["start_dir"]
     save_dir = config["save_dir"]
     verbose = config["verbose"]
-    show_full_paths = config["show_full_paths"]
+    full_paths = config["preserve_paths"]
+    clean_names = config["clean_names"]
     date_fmt = config["date_fmt"]
 
 archive.archive_path = save_dir
 
-#-----------------------------------------------------------------------------------
-#       Load/Save JSON
+
+#===================================================================================================================
+#===================================================================================================================
+#===================================================================================================================
+#                                  Functions
+
+# ----- JSON Functions ------
 
 def load_json():
     with open(config_file, 'r') as file:
@@ -76,7 +84,7 @@ def save_json(data):
     with open(config_file, 'w') as file:
         file.write(json.dumps(data, indent=4))
 
-#-----------------------------------------------------------------------------------
+# ----- Utilities ------
 
 def report(msg):
     if verbose:
@@ -86,7 +94,24 @@ def report(msg):
 def get_date():
     now = datetime.now()
     return now.strftime(date_fmt)
-    
+
+
+def display_loop(lbl_list, val_list, pos_list):
+    # pos_list = (label x position, value x position, row gap)
+    lbl_xpos = pos_list[0] # Label placement 
+    val_xpos = pos_list[1] # Value placement
+    row_ypos = pos_list[2] # Gap between rows
+    for l in lbl_list:
+        # Get matching value from val_list
+        i = lbl_list.index(l)
+        v = val_list[i]
+        # Calculate row
+        y = (row_ypos * i ) + row_ypos
+        l.place(x=lbl_xpos,y=y)
+        v.place(x=val_xpos, y=y)
+
+# ------ File data ------
+
 # Convert bytes to something more readable 
 def convert_size(size_bytes):
    if size_bytes == 0:
@@ -107,8 +132,15 @@ def get_size(start_path):
             # skip if it is symbolic link
             if not os.path.islink(fp):
                 total_size += os.path.getsize(fp)
-
     return total_size
+
+#TODO rename this mf
+def calc_size(): # Get size of all directories in archive.target_paths
+    b = 0
+    for p in archive.target_paths:
+        b += get_size(p)
+    fmt = convert_size(b)
+    size_before_val["text"] = fmt
 
 
 def count_files(path):
@@ -118,14 +150,84 @@ def count_files(path):
     archive.total_files = num
 
 
+# ----- File broswers ------
+
+def add_dir(): # For adding directories to archive.target_paths
+    report("Opened directory browser")
+
+    path = filedialog.askdirectory(
+        initialdir = start_dir,
+        title = "Select a folder"
+    )
+    if not path:
+        report("File browser closed")
+        return    
+    archive.target_paths.append(path)
+    paths_added_val["text"] = str(len(archive.target_paths))
+    #update_path_box()
+    paths_box.config(state="normal")
+    paths_box.insert(tk.END, path + '\n')
+    paths_box.config(state="disabled")
+    # Get the estimated size of paths added to the target paths list
+    calc_size()
+    # Total files to be archived
+    count_files(path)
+    file_count_val["text"] = archive.total_files
+    report("Added directory to target path: " + path)
+
+
+def browse_files(): # return a single file path
+    report("Opened file browser")
+    filename = filedialog.askopenfilename(
+        initialdir=start_dir,
+        title="Select a file"
+    )
+    return filename
+
+
+def add_exclude(): # Add exclude.txt
+    report("Adding exclude.txt file")
+    path = browse_files()
+    s = os.path.split(path)
+    if s[1] != "exclude.txt":
+        report("Not a valid exclude file: " + path)
+        #! Need to report some kind of error here
+        return 
+    else:
+        report("Set exclude file to " + path)
+        archive.exclude_file = path 
+        exclude_file_val["font"] = small_font
+        exclude_file_val["text"] = path
+
+# ----- archive object data ------
+
+# Get name field, mess w it a bit
+def update_name(): 
+    name = arch_name_entry.get()
+    if clean_names:
+        name = clean_archive_name(name)
+    if name:
+        if add_dt.get():
+            name += '_'
+            name += get_date()
+        name += '.tar.gz'
+        archive.archive_name = name
+        arch_name_val["text"] = name
+        report("Changed archive name: " + name)
+
+# ----- Clean Archive Names ------
+
+def clean_archive_name(name):
+    # Remove spaces
+    # Convert to lowercase
+    clean_name = name.replace(" ", "_")
+    return clean_name.lower()
 
 
 #===================================================================================================================
 #===================================================================================================================
 #===================================================================================================================
-#                                  Archive
-
-
+#                                  Archive Pane
 
 def start_archive():
     report("Starting archive")
@@ -136,7 +238,7 @@ def start_archive():
     frame = tk.Frame(
         master=win,
         width=800,
-        height=250
+        height=400
     )
     frame.pack()
 
@@ -186,6 +288,22 @@ def start_archive():
     )
 
     done_lbl.place(x=300,y=200)
+    
+    # ----- text box ------
+    
+
+    file_box = tk.Text(
+        win,
+        state="disabled",
+        width = 55,
+        height = 5)
+
+    scroll = tk.Scrollbar(win, orient="vertical", command=file_box.yview)
+    file_box.configure(yscrollcommand=scroll.set)
+    # scroll.pack(side=tk.RIGHT,fill='y')
+    
+
+    file_box.place(relx=.5, y=300,anchor=tk.CENTER)
 
     # Loop  ---------------------------
     inc = 100 / archive.total_files # PB only works in 0-100
@@ -200,20 +318,27 @@ def start_archive():
                     pb["value"] += inc # Increase the progress bar
                     current_file_lbl["text"] = os.path.join(root,f) # display current file 
                     file_count_lbl["text"] = f"File: {str(f_count)}/{str(archive.total_files)}"
+                    file_box.config(state="normal")
+                    file_box.insert(tk.END, f + '\n')
+                    file_box.config(state="disabled")
                     win.update_idletasks() # Updates labels/pb during loop
                     tarhandle.add(os.path.join(root, f))
     done_lbl["text"] = "Finished"
     report("Finished archive")
 
-#-----------------------------------------------------------------------------------
+
+#===================================================================================================================
+#===================================================================================================================
+#===================================================================================================================
 #                                  Window Setup
 
-root.title("Archive Manager")
+report("Launching window")
+root.title(app_title)
 
 main = tk.Frame(
     master=root,
     width=600,
-    height=700,
+    height=500,
     bg=main_bg
 )
 
@@ -232,104 +357,155 @@ stats.pack(fill=tk.Y, side=tk.LEFT, expand=True)
 #===================================================================================================================
 #                               SETTINGS MENU
 
+def update_json_config():
+    data = load_json()
+    data["start_dir"] = start_dir
+    data["save_dir"] = save_dir
+    data["preserve_paths"] = full_paths
+    data["clean_names"] = clean_names
+    save_json(data)
+    report("Updated " + config_file)
 
 
+def settings_window():
+    def update():
+        global save_dir, start_dir, clean_names, full_paths
+        save_dir = save_dir_setting_val.get()
+        start_dir = start_dir_setting_val.get()
+        clean_names = bool(clean_names_cb.get())
+        full_paths = bool(preserve_paths_cb.get())
+        save_dir_val["text"] = save_dir
+        update_json_config()
+        win.destroy()
 
+    # ----- ui ------
+    settings_bg = None
+    settings_font = (font_family, "12")
+    entry_width = 30
+    # ----- window setup ------
+    report("Opened settings")
+    win = tk.Toplevel(root)
+    win.title("Settings")
+    # ----- frame setup ------
+    frame = tk.Frame(
+        master=win,
+        width=500,
+        height=600,
+        bg=settings_bg
+        )
+    frame.pack()
 
+    # ----- save directory ------
+    save_dir_setting_lbl = tk.Label(
+        win,
+        text="Directory for archives",
+        font=settings_font,
+        bg=settings_bg
+        )
 
-#===================================================================================================================
-#===================================================================================================================
-#===================================================================================================================
-#                               UI Functions
+    save_dir_setting_val = tk.Entry(
+        win, 
+        width = entry_width,
+        font=settings_font,
+        bg=settings_bg
+        )
 
+    # ----- start directory ------
+    start_dir_setting_lbl = tk.Label(
+        win,
+        text="Start directory",
+        font=settings_font,
+        bg=settings_bg
+        )
 
-# File browsers
-def add_dir(): # For adding directories to archive.target_paths
-    report("Opened directory browser")
+    start_dir_setting_val = tk.Entry(
+        win, 
+        width = entry_width,
+        font=settings_font,
+        bg=settings_bg
+        )
+    # ----- clean names ------
+    clean_names_cb = tk.IntVar()
 
-    path = filedialog.askdirectory(
-        initialdir = "/home/jakers/",
-        title = "Select a folder"
+    clean_names_setting_lbl = tk.Label(
+        win,
+        text="Clean archive names",
+        font=settings_font,
+        bg=settings_bg
+        )
+
+    clean_names_setting_val = tk.Checkbutton(
+        win,
+        variable=clean_names_cb,
+        bg=settings_bg)
+
+    # ----- preserve paths ------
+    preserve_paths_cb = tk.IntVar()
+    preserve_paths_setting_lbl = tk.Label(
+        win,
+        text="Preserve file paths",
+        font=settings_font,
+        bg=settings_bg
+        )
+
+    preserve_paths_setting_val = tk.Checkbutton(
+        win,
+        variable=preserve_paths_cb,
+        bg=settings_bg)
+
+    # ----- buttons ------
+    about_btn = tk.Button(
+        win,
+        text="About " + app_name
     )
-    if not path:
-        report("File browser closed")
-        return    
-    archive.target_paths.append(path)
-    paths_added_lbl["text"] = str(len(archive.target_paths))
-    #update_path_box()
-    paths_box.config(state="normal")
-    paths_box.insert(tk.END, path + '\n')
-    paths_box.config(state="disabled")
-    # Get the estimated size of paths added to the target paths list
-    calc_size()
-    # Total files to be archived
-    count_files(path)
-    file_count_lbl["text"] = archive.total_files
-    report("Added directory to target path: " + path)
 
-
-def browse_files(): # return a single file path
-    report("Opened file browser")
-    filename = filedialog.askopenfilename(
-        initialdir="/home/jakers/Desktop",
-        title="Select a file"
+    update_settings_btn = tk.Button(
+        win,
+        text="Update",
+        command=update
     )
-    return filename
 
+    # ----- placements ------
+    lbl_list = [
+        save_dir_setting_lbl,
+        start_dir_setting_lbl,
+        clean_names_setting_lbl,
+        preserve_paths_setting_lbl
+    ]
 
-def add_exclude(): # Add exclude.txt
-    report("Adding exclude.txt file")
-    path = browse_files()
-    s = os.path.split(path)
-    if s[1] != "exclude.txt":
-        report("Not a valid exclude file: " + path)
-        #! Need to report some kind of error here
-        return 
-    else:
-        report("Set exclude file to " + path)
-        archive.exclude_file = path 
-        exclude_file_lbl["font"] = small_font
-        exclude_file_lbl["text"] = path
+    val_list = [
+        save_dir_setting_val,
+        start_dir_setting_val,
+        clean_names_setting_val,
+        preserve_paths_setting_val
+    ]
 
+    display_loop(lbl_list, val_list, (10,200,50))
+    
+    # ----- set values ------
+    if clean_names:
+        clean_names_setting_val.select()
+    if full_paths:
+        preserve_paths_setting_val.select()
 
-def calc_size(): # Get size of all directories in archive.target_paths
-    b = 0
-    for p in archive.target_paths:
-        b += get_size(p)
-    fmt = convert_size(b)
-    size_before_lbl["text"] = fmt
+    about_btn.place(relx=.5, y=500,anchor=tk.CENTER)
+    update_settings_btn.place(relx=.5, y=550,anchor=tk.CENTER)
 
-#-----------------------------------------------------------------------------------
-#                           Update Archive Name
-
-# Get name field, mess w it a bit
-def update_name(): 
-    name = arch_name_entry.get()
-    if name:
-        if add_dt.get():
-            name += '_'
-            name += get_date()
-        name += '.tar.gz'
-        archive.archive_name = name
-        arch_name_lbl["text"] = name
-        report("Changed archive name: " + name)
-
-
+    # ----- fill entry widgets ------
+    start_dir_setting_val.insert(tk.END, start_dir)
+    save_dir_setting_val.insert(tk.END, save_dir)
 
 #===================================================================================================================
 #===================================================================================================================
 #===================================================================================================================
 #                           Main Frame Setup 
 
-
-
 # Header
 label = tk.Label(
     master=main,
-    text="Archive Manager",
+    text=app_title,
     font=header_font,
-    bg=main_bg
-)
+    bg=main_bg)
 
 label.place(x=220,y=50)
 
@@ -351,8 +527,7 @@ arch_name_update_button = tk.Button(
     main,
     text="Update",
     font=body_font,
-    command=update_name
-)
+    command=update_name)
 
 # Checkboxes
 c1 = tk.Checkbutton(
@@ -361,8 +536,7 @@ c1 = tk.Checkbutton(
     text="Add date",
     font=small_font,
     bd=0,
-    bg=main_bg
-    )
+    bg=main_bg)
 
 label.place(x=20,y=150)
 arch_name_entry.place(x=170, y=150)
@@ -378,8 +552,7 @@ label = tk.Label(
     master=main,
     text="Add folders",
     font=body_font,
-    bg=main_bg
-)
+    bg=main_bg)
 
 label.place(x=20,y=200)
 
@@ -394,182 +567,168 @@ label = tk.Label(
     master=main,
     text="Add exclude.txt",
     font=body_font,
-    bg=main_bg
-)
+    bg=main_bg)
 
 label.place(x=20,y=250)
 
 add_exclude_btn = tk.Button(main, text="Browse", font=body_font, command=add_exclude)
 add_exclude_btn.place(x=475,y=250)
 
-
 #-----------------------------------------------------------------------------------
 
 start_archive_btn = tk.Button(
     main,
     text="Start Archive",
-    command=start_archive
+    command=start_archive)
 
-)
+start_archive_btn.place(x=250,y=400)
 
-start_archive_btn.place(x=250,y=600)
+settings_btn = tk.Button(
+    main,
+    text="Settings",
+    command=settings_window)
 
+settings_btn.place(x=175, y=400)
 
 #===================================================================================================================
 #===================================================================================================================
 #===================================================================================================================
-
 #       Stats Page Setup
-
-# Change this shit to adjust spacing
-x_start = 10 # 1,0
-x_next = 150# 2,0
-y_start = 0 # 0,1
-y_next = y_start + 25# 0,2
 
 # -------------------------------------------
 # Archive name
 
-label = tk.Label(
+arch_name_lbl = tk.Label(
     master=stats,
     text="Archive name:",
     font=body_font,
-    bg=stats_bg
-)
+    bg=stats_bg)
 
-label.place(x=x_start,y=y_start)
-
-
-arch_name_lbl = tk.Label( #?
+arch_name_val = tk.Label( #?
     stats,
     text="",
     font=body_font,
-    bg=stats_bg
-)
-
-arch_name_lbl.place(x=x_next, y=y_start)
+    bg=stats_bg)
 
 # -------------------------------------------
 # Display save directory path
 
-save_dir_label = tk.Label(
+save_dir_lbl = tk.Label(
+    stats,
+    text="Save folder:",
+    font=body_font,
+    bg=stats_bg)
+
+
+save_dir_val = tk.Label(
     stats, 
     text=save_dir,
     font=body_font,
-    bg = stats_bg
-)
-
-save_dir_label.place(x=x_start, y=y_next)
-
-
-
+    bg = stats_bg)
 
 # -------------------------------------------
 # Paths added
 
-label = tk.Label(
+paths_added_lbl = tk.Label(
     master=stats,
     text="Paths added:",
     font=body_font,
     bg=stats_bg
 )
 
-label.place(x=x_start, y=y_next * 2)
-
-paths_added_lbl = tk.Label(
+paths_added_val = tk.Label(
     stats,
     text="0",
     font=body_font,
     bg=stats_bg
 )
-
-paths_added_lbl.place(x=x_next, y=y_next * 2)
 
 # -------------------------------------------
 # Exclude file
 
-label = tk.Label(
+exclude_file_lbl = tk.Label(
     master=stats,
     text="Exclude file:",
     font=body_font,
-    bg=stats_bg
-)
+    bg=stats_bg)
 
-#label.place(x=x_start, y=y_next * 3)
-
-
-exclude_file_lbl = tk.Label(
+exclude_file_val = tk.Label(
     stats,
     text="None",
     font=body_font,
-    bg=stats_bg
-)
-
-#exclude_file_lbl.place(x=x_next, y=y_next * 3)
-
+    bg=stats_bg)
 
 # -------------------------------------------
 # Archive size
 
-label = tk.Label(
+size_before_lbl = tk.Label(
     master=stats,
     text="Size (before):",
     font=body_font,
-    bg=stats_bg
-)
+    bg=stats_bg)
 
-label.place(x=x_start, y=y_next * 4)
-
-size_before_lbl = tk.Label(
+size_before_val = tk.Label(
     master=stats,
     text="0",
     font=body_font,
-    bg=stats_bg
-)
-
-size_before_lbl.place(x=x_next, y=y_next * 4)
+    bg=stats_bg)
 
 # -------------------------------------------
 # File count
 
-label = tk.Label(
+file_count_lbl = tk.Label(
     master=stats,
     text="File count:",
     font=body_font,
-    bg=stats_bg
-)
+    bg=stats_bg)
 
-label.place(x=x_start, y=y_next * 5)
-
-file_count_lbl = tk.Label(
+file_count_val = tk.Label(
     master=stats,
     text="0",
     font=body_font,
-    bg=stats_bg
-)
-
-file_count_lbl.place(x=x_next, y=y_next*5)
+    bg=stats_bg)
 
 # -------------------------------------------
 # Path list
 
-label = tk.Label(
+paths_box_lbl = tk.Label(
     master=stats,
     text="Paths to Archive",
     font=body_font,
-    bg=stats_bg
-)
-
-label.place(x=175, y=375)
+    bg=stats_bg)
 
 paths_box = tk.Text(
     stats,
     state="disabled",
     width = 55,
-    height = 15
-)
+    height = 15)
 
-paths_box.place(x=25,y=400)
+paths_box_lbl.place(x=175, y=175)
+paths_box.place(x=25,y=200)
+
+#-----------------------------------------------------------------------------------
+    # Displaying Stats Labels and Values#
+
+
+lbl_list = [
+    arch_name_lbl,
+    save_dir_lbl,
+    paths_added_lbl,
+    #exclude_file_lbl,
+    file_count_lbl,
+    size_before_lbl]
+
+val_list = [
+    arch_name_val,
+    save_dir_val,
+    paths_added_val,
+    #exclude_file_val,
+    file_count_val,
+    size_before_val]
+
+pos_list = (10,150,25)
+
+display_loop(lbl_list, val_list, pos_list) 
 
 #-----------------------------------------------------------------------------------
 

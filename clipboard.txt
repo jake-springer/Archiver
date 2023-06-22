@@ -1,0 +1,2 @@
+# ----- section ------
+widget.place(relx=.5, rely=.5,anchor= CENTER)

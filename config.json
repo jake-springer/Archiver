@@ -1,7 +1,8 @@
 {
-    "start_dir":"/",
-    "save_dir":"/home/jakers/Desktop/dump",
-    "verbose":true,
-    "show_full_paths":true,
-    "date_fmt":"%m-%d-%Y"
+    "save_dir": "/home/jakers/Desktop/dump",
+    "start_dir": "/home/jakers/Documents",
+    "date_fmt": "%m-%d-%Y",
+    "clean_names": false,
+    "preserve_paths": false,
+    "verbose": true
 }
